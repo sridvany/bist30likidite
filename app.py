@@ -378,7 +378,7 @@ with st.sidebar:
         n_gun_tarama = tarama_baslangic
         st.markdown(
             "<span style='font-size:0.8em;color:#6b7280'>"
-            "Skor = %50 getiri + %50 hacim ağırlığı ile hesaplanır."
+            "Seçilen tarihten bugüne en yüksek getirili hisse seçilir."
             "</span>",
             unsafe_allow_html=True
         )
