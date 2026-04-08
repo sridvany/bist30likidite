@@ -154,14 +154,12 @@ def fetch_intraday_60d(ticker: str) -> pd.DataFrame:
         return pd.DataFrame()
 
 # ── BIST30 Tarama Fonksiyonu ─────────────────────────────────────────────────
-def fetch_bist30_best(n_gun: int):
+def fetch_bist30_best(baslangic_tarihi):
     """
-    BIST30 hisselerini tara, n_gun performansına göre en iyi hisseyi seç.
+    BIST30 hisselerini tara, belirtilen tarihten bugüne performansa göre en iyi hisseyi seç.
     Skor = 0.5 × getiri_rank + 0.5 × hacim_rank (her ikisi 0-1 normalize)
-    Döndürür: (ticker, getiri_pct, ort_hacim, skor, detay_df)
     """
-    # Tarama başlangıç tarihi: n_gun + buffer (hafta sonları için)
-    baslangic = (pd.Timestamp.today() - pd.Timedelta(days=n_gun + 15)).strftime("%Y-%m-%d")
+    baslangic = str(baslangic_tarihi)
 
     sonuclar = []
     hatalar  = []
@@ -175,7 +173,7 @@ def fetch_bist30_best(n_gun: int):
         durum_txt.markdown(
             f"<span style='font-family:IBM Plex Mono;font-size:0.85em;color:#94a3b8'>"
             f"⏳ **{ticker}** işleniyor... ({i+1}/{len(BIST30)})<br>"
-            f"Yapılan işlem: son {n_gun} günlük kapanış fiyatı ve hacim verisi çekiliyor, "
+            f"Yapılan işlem: {baslangic} tarihinden bugüne kapanış fiyatı ve hacim verisi çekiliyor, "
             f"getiri ve ortalama hacim hesaplanıyor.</span>",
             unsafe_allow_html=True
         )
@@ -183,14 +181,13 @@ def fetch_bist30_best(n_gun: int):
 
         try:
             df = yf.download(ticker, start=baslangic, auto_adjust=True, progress=False)
-            if df.empty or len(df) < n_gun:
+            if df.empty:
                 hatalar.append(ticker)
                 continue
             df = _flatten(df)
             df.dropna(subset=["Close", "Volume"], inplace=True)
 
-            # Son n_gun iş günü
-            df_n = df.iloc[-n_gun:]
+            df_n = df
             if len(df_n) < 2:
                 hatalar.append(ticker)
                 continue
@@ -374,12 +371,13 @@ with st.sidebar:
 
     if analiz_modu == "🏆 BIST30 Tarama":
         st.markdown("**🏆 En İyi Hisseyi Bul**")
-        n_gun_tarama = st.selectbox(
-            "Performans Penceresi",
-            options=[10, 20, 30],
-            index=1,
-            format_func=lambda x: f"Son {x} gün"
+        tarama_baslangic = st.date_input(
+            "Başlangıç Tarihi",
+            value=date.today() - pd.Timedelta(days=20),
+            min_value=date(2000, 1, 1),
+            max_value=date.today() - pd.Timedelta(days=1),
         )
+        n_gun_tarama = tarama_baslangic
         st.markdown(
             "<span style='font-size:0.8em;color:#6b7280'>"
             "Skor = %50 getiri + %50 hacim ağırlığı ile hesaplanır."
@@ -533,9 +531,10 @@ if run or "last_ticker" in st.session_state:
             h_rank_pct   = sonuc["hacim_rank"] * 100
 
             # Açıklayıcı metin
+            _baslangic_str = pd.Timestamp(str(_n_gun_tarama)).strftime("%d.%m.%Y")
             getiri_aciklama = (
                 f"BIST30 içinde getiri sıralamasında **%{g_rank_pct:.0f}. persentilde**"
-                f" yer aldı — {_n_gun_tarama} günde **+%{getiri_pct:.2f}** kazandırdı."
+                f" yer aldı — {_baslangic_str} tarihinden bu yana **+%{getiri_pct:.2f}** kazandırdı."
             )
             hacim_aciklama = (
                 f"Ortalama günlük hacim **{ort_hacim_m:.0f}M** ile hacim sıralamasında"
@@ -556,7 +555,7 @@ if run or "last_ticker" in st.session_state:
 🏆 {_ticker}
 </div>
 <div style="color:#94a3b8;font-size:0.9em;margin-top:6px">
-Son {_n_gun_tarama} gün · Getiri: <span style="color:#22c55e;font-weight:600">+%{getiri_pct:.2f}</span> &nbsp;|&nbsp;
+{_baslangic_str} itibarıyla · Getiri: <span style="color:#22c55e;font-weight:600">+%{getiri_pct:.2f}</span> &nbsp;|&nbsp;
 Ort. Günlük Hacim: <span style="color:#7dd3fc;font-weight:600">{ort_hacim_m:.0f}M</span> &nbsp;|&nbsp;
 Skor: <span style="color:#f59e0b;font-weight:600">{skor:.3f} / 1.000</span>
 </div>
