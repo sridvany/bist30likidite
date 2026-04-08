@@ -755,7 +755,7 @@ Skor: <span style="color:#f59e0b;font-weight:600">{skor:.3f} / 1.000</span>
             .data-table tr:hover td {{background:#141824;}}</style>
             <div style="overflow-x:auto;max-height:60vh;overflow-y:auto;">
             <table class="data-table"><thead>{header_i}</thead><tbody>{rows_i}</tbody></table></div>"""
-            st.markdown(tbl_html, unsafe_allow_html=True)
+            st.components.v1.html(tbl_html, height=600, scrolling=True)
 
     # ── Günlük Mod (Günlük + BIST30 tarama sonrası) ──────────────────────────
     if _mode in ("📅 Günlük", "🏆 BIST30 Tarama"):
@@ -958,7 +958,7 @@ Skor: <span style="color:#f59e0b;font-weight:600">{skor:.3f} / 1.000</span>
             .data-table tr:hover td {{background:#141824;}}</style>
             <div style="overflow-x:auto;max-height:65vh;overflow-y:auto;">
             <table class="data-table"><thead>{header}</thead><tbody>{rows}</tbody></table></div>"""
-            st.markdown(table_html, unsafe_allow_html=True)
+            st.components.v1.html(table_html, height=700, scrolling=True)
 
             st.markdown("---")
             st.markdown("### 🔗 Likidite Boyutları İlişki Analizi")
