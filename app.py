@@ -16,7 +16,7 @@ BIST30 = [
     "ISCTR.IS","KCHOL.IS","KOZAL.IS","KRDMD.IS","MGROS.IS",
     "PETKM.IS","SAHOL.IS","SASA.IS","SISE.IS","TAVHL.IS",
     "TCELL.IS","THYAO.IS","TOASO.IS","TTKOM.IS","TUPRS.IS",
-    "VAKBN.IS","YKBNK.IS","PGSUS.IS","ASTOR.IS",
+    "VAKBN.IS","YKBNK.IS","PGSUS.IS","ASTOR.IS","DSTKF.IS",
 ]
 
 # ── Sayfa Ayarları ──────────────────────────────────────────────────────────
@@ -154,6 +154,7 @@ def fetch_intraday_60d(ticker: str) -> pd.DataFrame:
         return pd.DataFrame()
 
 # ── BIST30 Tarama Fonksiyonu ─────────────────────────────────────────────────
+@st.cache_data(ttl=300, show_spinner=False, persist=False)
 def fetch_bist30_best(baslangic_tarihi):
     """
     BIST30 hisselerini tara, belirtilen tarihten bugüne performansa göre en iyi hisseyi seç.
@@ -164,21 +165,7 @@ def fetch_bist30_best(baslangic_tarihi):
     sonuclar = []
     hatalar  = []
 
-    # Progress UI
-    st.markdown("#### 🔍 BIST30 Taranıyor...")
-    prog_bar  = st.progress(0)
-    durum_txt = st.empty()
-
     for i, ticker in enumerate(BIST30):
-        durum_txt.markdown(
-            f"<span style='font-family:IBM Plex Mono;font-size:0.85em;color:#94a3b8'>"
-            f"⏳ **{ticker}** işleniyor... ({i+1}/{len(BIST30)})<br>"
-            f"Yapılan işlem: {baslangic} tarihinden bugüne kapanış fiyatı ve hacim verisi çekiliyor, "
-            f"getiri ve ortalama hacim hesaplanıyor.</span>",
-            unsafe_allow_html=True
-        )
-        prog_bar.progress((i + 1) / len(BIST30))
-
         try:
             df = yf.download(ticker, start=baslangic, auto_adjust=True, progress=False)
             if df.empty:
@@ -205,9 +192,6 @@ def fetch_bist30_best(baslangic_tarihi):
         except Exception:
             hatalar.append(ticker)
             continue
-
-    prog_bar.empty()
-    durum_txt.empty()
 
     if not sonuclar:
         return None
@@ -520,6 +504,20 @@ if run or "last_ticker" in st.session_state:
     # ── BIST30 Tarama Modu ───────────────────────────────────────────────────
     if _mode == "🏆 BIST30 Tarama":
         if run:
+            st.markdown("#### 🔍 BIST30 Taranıyor...")
+            prog_bar  = st.progress(0)
+            durum_txt = st.empty()
+            baslangic_str = str(_n_gun_tarama)
+            for i, t in enumerate(BIST30):
+                durum_txt.markdown(
+                    f"<span style='font-family:IBM Plex Mono;font-size:0.85em;color:#94a3b8'>"
+                    f"⏳ **{t}** işleniyor... ({i+1}/{len(BIST30)})<br>"
+                    f"Yapılan işlem: {baslangic_str} tarihinden bugüne kapanış fiyatı ve hacim verisi çekiliyor.</span>",
+                    unsafe_allow_html=True
+                )
+                prog_bar.progress((i + 1) / len(BIST30))
+            prog_bar.empty()
+            durum_txt.empty()
             sonuc = fetch_bist30_best(_n_gun_tarama)
             st.session_state["tarama_sonuc"] = sonuc
             if sonuc:
