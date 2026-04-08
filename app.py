@@ -746,14 +746,18 @@ Skor: <span style="color:#f59e0b;font-weight:600">{skor:.3f} / 1.000</span>
                     return f'<span class="neutral">{val:.4f}</span>'
                 cells = "".join(f"<td>{cv(row[c], c)}</td>" for c in cols_intra)
                 rows_i += f"<tr><td><span style='font-family:IBM Plex Mono;font-size:0.85em;color:#94a3b8'>{zaman}</span></td>{cells}</tr>"
-            tbl_html = f"""
-            <style>.data-table {{width:100%;border-collapse:collapse;font-size:0.82em;margin-top:8px;}}
-            .data-table th {{background:#1e2235;color:#7dd3fc;font-family:'IBM Plex Mono',monospace;font-weight:600;padding:10px 12px;text-align:right;border-bottom:2px solid #2a2d3e;white-space:nowrap;}}
-            .data-table th:first-child {{text-align:left;}}
-            .data-table td {{padding:8px 12px;text-align:right;border-bottom:1px solid #1e2235;}}
-            .data-table td:first-child {{text-align:left;}}
-            .data-table tr:hover td {{background:#141824;}}</style>
-            <div style="overflow-x:auto;max-height:60vh;overflow-y:auto;">
+            tbl_html = f"""<style>
+            body{{margin:0;background:#0f1117;}}
+            .pos{{color:#22c55e;font-weight:600;}}
+            .neg{{color:#ef4444;font-weight:600;}}
+            .neutral{{color:#94a3b8;}}
+            .data-table{{width:100%;border-collapse:collapse;font-size:0.82em;margin-top:8px;background:#0f1117;}}
+            .data-table th{{background:#1e2235;color:#7dd3fc;font-family:'IBM Plex Mono',monospace;font-weight:600;padding:10px 12px;text-align:right;border-bottom:2px solid #2a2d3e;white-space:nowrap;}}
+            .data-table th:first-child{{text-align:left;}}
+            .data-table td{{padding:8px 12px;text-align:right;border-bottom:1px solid #1e2235;background:#0f1117;color:#94a3b8;}}
+            .data-table td:first-child{{text-align:left;}}
+            .data-table tr:hover td{{background:#141824;}}</style>
+            <div style="overflow-x:auto;max-height:60vh;overflow-y:auto;background:#0f1117;">
             <table class="data-table"><thead>{header_i}</thead><tbody>{rows_i}</tbody></table></div>"""
             st.components.v1.html(tbl_html, height=600, scrolling=True)
 
@@ -950,13 +954,18 @@ Skor: <span style="color:#f59e0b;font-weight:600">{skor:.3f} / 1.000</span>
                 date_str = idx.strftime("%d.%m.%Y")
                 cells = "".join(f"<td>{color_val(row[c], c)}</td>" for c in cols_show)
                 rows += f"<tr><td><span style='font-family:IBM Plex Mono;font-size:0.85em;color:#94a3b8'>{date_str}</span></td>{cells}</tr>"
-            table_html = f"""<style>.data-table {{width:100%;border-collapse:collapse;font-size:0.82em;margin-top:8px;}}
-            .data-table th {{background:#1e2235;color:#7dd3fc;font-family:'IBM Plex Mono',monospace;font-weight:600;padding:10px 12px;text-align:right;border-bottom:2px solid #2a2d3e;white-space:nowrap;}}
-            .data-table th:first-child {{text-align:left;}}
-            .data-table td {{padding:8px 12px;text-align:right;border-bottom:1px solid #1e2235;}}
-            .data-table td:first-child {{text-align:left;}}
-            .data-table tr:hover td {{background:#141824;}}</style>
-            <div style="overflow-x:auto;max-height:65vh;overflow-y:auto;">
+            table_html = f"""<style>
+            body{{margin:0;background:#0f1117;}}
+            .pos{{color:#22c55e;font-weight:600;}}
+            .neg{{color:#ef4444;font-weight:600;}}
+            .neutral{{color:#94a3b8;}}
+            .data-table{{width:100%;border-collapse:collapse;font-size:0.82em;margin-top:8px;background:#0f1117;}}
+            .data-table th{{background:#1e2235;color:#7dd3fc;font-family:'IBM Plex Mono',monospace;font-weight:600;padding:10px 12px;text-align:right;border-bottom:2px solid #2a2d3e;white-space:nowrap;}}
+            .data-table th:first-child{{text-align:left;}}
+            .data-table td{{padding:8px 12px;text-align:right;border-bottom:1px solid #1e2235;background:#0f1117;color:#94a3b8;}}
+            .data-table td:first-child{{text-align:left;}}
+            .data-table tr:hover td{{background:#141824;}}</style>
+            <div style="overflow-x:auto;max-height:65vh;overflow-y:auto;background:#0f1117;">
             <table class="data-table"><thead>{header}</thead><tbody>{rows}</tbody></table></div>"""
             st.components.v1.html(table_html, height=700, scrolling=True)
 
