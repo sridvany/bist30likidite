@@ -287,22 +287,21 @@ def compute_metrics(df: pd.DataFrame) -> pd.DataFrame:
     cs    = 2 * (np.exp(alpha) - 1) / (1 + np.exp(alpha))
     out["C-S Spread (%)"] = (cs * 100).round(4)
 
+    # ── MEC — vektörize rolling hesap ────────────────────────────────────────
     log_ret = np.log(df["Close"] / df["Close"].shift(1))
     window  = 90
-    mec_vals = []
-    for i in range(len(df)):
-        if i < window:
-            mec_vals.append(np.nan)
-            continue
-        seg = log_ret.iloc[i - window + 1: i + 1]
-        lr30 = np.log(df["Close"].iloc[i - window + 1: i + 1].values[::6])
-        r30  = np.diff(lr30)
-        r5   = seg.values
-        var30 = np.var(r30, ddof=1) if len(r30) > 1 else np.nan
-        var5  = np.var(r5,  ddof=1) if len(r5)  > 1 else np.nan
-        denom = 6 * var5
-        mec_vals.append(round(var30 / denom, 4) if denom and denom > 0 else np.nan)
-    out["MEC"] = mec_vals
+    # var5: 90 günlük rolling varyans (günlük log return)
+    var5 = log_ret.rolling(window, min_periods=window).var()
+    # var30: 6 günde bir örnekleme (haftalık proxy) — rolling window ile
+    log_close = np.log(df["Close"])
+    ret6 = log_close.diff(6)  # 6 günlük log return
+    var30 = ret6.rolling(window // 6, min_periods=2).var()
+    # Endeksleri hizala
+    var30_aligned = var30.reindex(df.index)
+    denom = 6 * var5
+    mec_series = (var30_aligned / denom).round(4)
+    mec_series[denom <= 0] = np.nan
+    out["MEC"] = mec_series.values
 
     amihud    = out["Amihud (×10⁶)"].copy()
     log_hacim = out["log₁₀(Hacim)"].copy()
@@ -985,8 +984,10 @@ Ort. Günlük Hacim: <span style="color:#7dd3fc;font-weight:600">{ort_hacim_m:.0
             roll_window = 60
             pairs = [("Close","Daily Range","#7dd3fc"),("Close","Amihud (log)","#f59e0b"),("Close","Hacim (log)","#22c55e"),("Close","C-S Spread","#a78bfa"),("Close","MEC","#fb923c")]
             roll_fig = go.Figure()
+            # Vektörize rolling Spearman: rank dönüşümü + pandas rolling corr
+            ana_ranked = ana[["Close","Daily Range","Amihud (log)","Hacim (log)","C-S Spread","MEC"]].rank()
             for c1, c2, color in pairs:
-                roll_corr = [spearmanr(ana[c1].iloc[max(0,i-roll_window):i+1], ana[c2].iloc[max(0,i-roll_window):i+1])[0] if i >= 10 else np.nan for i in range(len(ana))]
+                roll_corr = ana_ranked[c1].rolling(roll_window, min_periods=10).corr(ana_ranked[c2])
                 roll_fig.add_trace(go.Scatter(x=ana.index, y=roll_corr, name=f"{c1} × {c2}", line=dict(color=color, width=1.5)))
             roll_fig.add_hline(y=0, line=dict(color="#4b5563", dash="dot", width=1))
             roll_fig.update_layout(paper_bgcolor="#0f1117", plot_bgcolor="#0f1117", font=dict(family="IBM Plex Mono", color="#94a3b8", size=11), legend=dict(orientation="h", y=1.1, bgcolor="rgba(0,0,0,0)"), margin=dict(l=10, r=10, t=30, b=10), height=300, yaxis=dict(range=[-1,1], showgrid=True, gridcolor="#1e2235"), xaxis=dict(showgrid=False))
