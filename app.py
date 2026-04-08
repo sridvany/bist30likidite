@@ -16,7 +16,7 @@ BIST30 = [
     "ISCTR.IS","KCHOL.IS","KOZAL.IS","KRDMD.IS","MGROS.IS",
     "PETKM.IS","SAHOL.IS","SASA.IS","SISE.IS","TAVHL.IS",
     "TCELL.IS","THYAO.IS","TOASO.IS","TTKOM.IS","TUPRS.IS",
-    "VAKBN.IS","YKBNK.IS","PGSUS.IS","ASTOR.IS","DSTKF.IS",
+    "VAKBN.IS","YKBNK.IS","PGSUS.IS","ASTOR.IS",
 ]
 
 # ── Sayfa Ayarları ──────────────────────────────────────────────────────────
