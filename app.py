@@ -216,8 +216,7 @@ def fetch_bist30_best(baslangic_tarihi):
 
     # 0-1 normalize rank
     df_s["getiri_rank"] = (df_s["getiri"].rank() - 1) / (len(df_s) - 1)
-    df_s["hacim_rank"]  = (df_s["ort_hacim"].rank() - 1) / (len(df_s) - 1)
-    df_s["skor"]        = 0.5 * df_s["getiri_rank"] + 0.5 * df_s["hacim_rank"]
+    df_s["skor"]        = df_s["getiri_rank"]
 
     kazanan = df_s.sort_values("skor", ascending=False).iloc[0]
 
@@ -227,7 +226,6 @@ def fetch_bist30_best(baslangic_tarihi):
         "ort_hacim": kazanan["ort_hacim"],
         "skor":      kazanan["skor"],
         "getiri_rank": kazanan["getiri_rank"],
-        "hacim_rank":  kazanan["hacim_rank"],
         "df_tum":    df_s.sort_values("skor", ascending=False).reset_index(drop=True),
         "hatalar":   hatalar,
     }
@@ -528,7 +526,6 @@ if run or "last_ticker" in st.session_state:
             ort_hacim_m  = sonuc["ort_hacim"] / 1_000_000
             skor         = sonuc["skor"]
             g_rank_pct   = sonuc["getiri_rank"] * 100
-            h_rank_pct   = sonuc["hacim_rank"] * 100
 
             # Açıklayıcı metin
             _baslangic_str = pd.Timestamp(_n_gun_tarama).strftime("%d.%m.%Y") if hasattr(_n_gun_tarama, 'year') else str(_n_gun_tarama)
@@ -536,18 +533,7 @@ if run or "last_ticker" in st.session_state:
                 f"BIST30 içinde getiri sıralamasında **%{g_rank_pct:.0f}. persentilde**"
                 f" yer aldı — {_baslangic_str} tarihinden bu yana **+%{getiri_pct:.2f}** kazandırdı."
             )
-            hacim_aciklama = (
-                f"Ortalama günlük hacim **{ort_hacim_m:.0f}M** ile hacim sıralamasında"
-                f" **%{h_rank_pct:.0f}. persentilde** bulundu."
-            )
-            if g_rank_pct >= 80 and h_rank_pct >= 80:
-                secim_neden = "Hem en yüksek getiri hem de en güçlü hacim grubunda yer aldı — hareket güçlü ve inandırıcı."
-            elif g_rank_pct >= 80:
-                secim_neden = "Getiri sıralamasında öne çıktı; hacim desteği orta düzeyde ama getiri baskın geldi."
-            elif h_rank_pct >= 80:
-                secim_neden = "Hacim sıralamasında öne çıktı; fiyat hareketi hacimle sağlam biçimde desteklendi."
-            else:
-                secim_neden = "Getiri ve hacim dengesi açısından BIST30 içinde en iyi bileşimi sağladı."
+            secim_neden = "BIST30 içinde seçilen dönemde en yüksek getiriyi sağladı."
 
             st.markdown(f"""
 <div class="winner-banner">
@@ -556,12 +542,10 @@ if run or "last_ticker" in st.session_state:
 </div>
 <div style="color:#94a3b8;font-size:0.9em;margin-top:6px">
 {_baslangic_str} itibarıyla · Getiri: <span style="color:#22c55e;font-weight:600">+%{getiri_pct:.2f}</span> &nbsp;|&nbsp;
-Ort. Günlük Hacim: <span style="color:#7dd3fc;font-weight:600">{ort_hacim_m:.0f}M</span> &nbsp;|&nbsp;
-Skor: <span style="color:#f59e0b;font-weight:600">{skor:.3f} / 1.000</span>
+Ort. Günlük Hacim: <span style="color:#7dd3fc;font-weight:600">{ort_hacim_m:.0f}M</span>
 </div>
 <div style="color:#6b7280;font-size:0.82em;margin-top:10px;line-height:1.6">
 📈 {getiri_aciklama}<br>
-📊 {hacim_aciklama}<br>
 ✅ <em>{secim_neden}</em>
 </div>
 </div>
