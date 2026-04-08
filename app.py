@@ -1103,9 +1103,9 @@ Ort. Günlük Hacim: <span style="color:#7dd3fc;font-weight:600">{ort_hacim_m:.0
                 font=dict(family="IBM Plex Mono", color="#94a3b8", size=11),
                 legend=dict(orientation="h", y=1.05, bgcolor="rgba(0,0,0,0)"),
                 margin=dict(l=10, r=10, t=40, b=10), height=380,
-                yaxis=dict(title="Kapanış", titlefont=dict(color="#22c55e"),
+                yaxis=dict(title="Kapanış", title_font=dict(color="#22c55e"),
                            tickfont=dict(color="#22c55e"), showgrid=True, gridcolor="#1e2235"),
-                yaxis2=dict(title=rm_label, titlefont=dict(color="#7dd3fc"),
+                yaxis2=dict(title=rm_label, title_font=dict(color="#7dd3fc"),
                             tickfont=dict(color="#7dd3fc"), overlaying="y", side="right", showgrid=False),
                 xaxis=dict(showgrid=False, color="#94a3b8"),
             )
