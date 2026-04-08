@@ -479,6 +479,20 @@ Düşük hacimli ani fiyat hareketleri otomatik olarak dezavantajlı konuma dü�
         """)
 
     st.markdown("---")
+    regime_metric = st.radio(
+        "🔬 Rejim & Lead-Lag Boyutu",
+        options=[
+            "Daily Range (%) — Anındalık",
+            "Amihud (×10⁶) — Genişlik",
+            "Hacim — Derinlik",
+            "C-S Spread (%) — Sıkılık",
+            "MEC — Esneklik",
+        ],
+        index=1,
+    )
+    regime_metric = regime_metric.split(" — ")[0]
+
+    st.markdown("---")
     run = st.button("⚡ Başlat", use_container_width=True, type="primary")
     st.markdown("---")
     auto_refresh = st.checkbox("🔄 Otomatik Yenile (55s)", value=False)
@@ -499,6 +513,7 @@ if run or "last_ticker" in st.session_state:
         st.session_state["last_mode"]         = analiz_modu
         st.session_state["last_intraday_date"]= str(intraday_date) if intraday_date else None
         st.session_state["last_n_gun_tarama"] = n_gun_tarama if analiz_modu == "🏆 BIST30 Tarama" else None
+        st.session_state["last_regime_metric"] = regime_metric
         st.session_state["tarama_sonuc"]      = None  # her yeni run'da sıfırla
 
     _ticker        = st.session_state.get("last_ticker", ticker_input)
@@ -507,6 +522,7 @@ if run or "last_ticker" in st.session_state:
     _mode          = st.session_state.get("last_mode", analiz_modu)
     _intraday_date = st.session_state.get("last_intraday_date")
     _n_gun_tarama  = st.session_state.get("last_n_gun_tarama")
+    _regime_metric = st.session_state.get("last_regime_metric", regime_metric)
 
     # ── BIST30 Tarama Modu ───────────────────────────────────────────────────
     if _mode == "🏆 BIST30 Tarama":
@@ -997,6 +1013,243 @@ Ort. Günlük Hacim: <span style="color:#7dd3fc;font-weight:600">{ort_hacim_m:.0
 
             st.markdown("---")
             import io
+
+            # ── Rejim Tespiti & Lead-Lag Analizi ─────────────────────────────
+            st.markdown("### 🔬 Rejim Tespiti & Lead-Lag Analizi")
+
+            # Seçilen boyutu hazırla
+            rm = _regime_metric
+            if rm == "Amihud (×10⁶)":
+                regime_series = metrics["Amihud (×10⁶)"].apply(
+                    lambda x: abs(np.log10(x)) if pd.notna(x) and x > 0 else np.nan)
+                rm_label = "log|Amihud|"
+            elif rm == "Hacim":
+                regime_series = metrics["log₁₀(Hacim)"]
+                rm_label = "log₁₀(Hacim)"
+            elif rm == "Daily Range (%)":
+                regime_series = metrics["Daily Range (%)"]
+                rm_label = "Daily Range (%)"
+            elif rm == "C-S Spread (%)":
+                regime_series = metrics["C-S Spread (%)"].replace(0, np.nan)
+                rm_label = "C-S Spread (%)"
+            else:  # MEC
+                regime_series = metrics["MEC"]
+                rm_label = "MEC"
+
+            regime_series = regime_series.dropna()
+            close_aligned = metrics["Kapanış (₺)"].reindex(regime_series.index)
+
+            # 3 rejim: percentile bazlı
+            p33 = regime_series.quantile(0.33)
+            p67 = regime_series.quantile(0.67)
+
+            # Amihud, C-S Spread, Daily Range, MEC için: yüksek = kötü likidite
+            # Hacim için: düşük = kötü likidite
+            if rm == "Hacim":
+                def rejim_ata(v):
+                    if v >= p67: return "Likit"
+                    elif v >= p33: return "Normal"
+                    else: return "İlikit"
+            else:
+                def rejim_ata(v):
+                    if v <= p33: return "Likit"
+                    elif v <= p67: return "Normal"
+                    else: return "İlikit"
+
+            rejim_ser = regime_series.apply(rejim_ata)
+
+            # ── Rejim Grafiği: fiyat + renkli arka plan ──────────────────────
+            st.markdown(f"**Likidite Rejimi — {rm_label} bazlı (3 seviye)**")
+
+            rejim_fig = go.Figure()
+
+            # Arka plan renk bantları
+            renk_rejim = {"Likit": "rgba(34,197,94,0.10)", "Normal": "rgba(245,158,11,0.10)", "İlikit": "rgba(239,68,68,0.10)"}
+            dates_list = regime_series.index.tolist()
+            prev_rejim = None
+            band_start = None
+            for i, (dt, rv) in enumerate(rejim_ser.items()):
+                if rv != prev_rejim:
+                    if prev_rejim is not None:
+                        rejim_fig.add_vrect(
+                            x0=band_start, x1=dt,
+                            fillcolor=renk_rejim[prev_rejim],
+                            layer="below", line_width=0,
+                        )
+                    band_start = dt
+                    prev_rejim = rv
+            if prev_rejim is not None:
+                rejim_fig.add_vrect(
+                    x0=band_start, x1=dates_list[-1],
+                    fillcolor=renk_rejim[prev_rejim],
+                    layer="below", line_width=0,
+                )
+
+            # Fiyat çizgisi
+            rejim_fig.add_trace(go.Scatter(
+                x=close_aligned.index, y=close_aligned.values,
+                name="Kapanış", line=dict(color="#22c55e", width=1.5),
+            ))
+
+            # Rejim serisi (ikincil eksen)
+            rejim_fig.add_trace(go.Scatter(
+                x=regime_series.index, y=regime_series.values,
+                name=rm_label, line=dict(color="#7dd3fc", width=1, dash="dot"),
+                yaxis="y2", opacity=0.6,
+            ))
+
+            rejim_fig.update_layout(
+                paper_bgcolor="#0f1117", plot_bgcolor="#0f1117",
+                font=dict(family="IBM Plex Mono", color="#94a3b8", size=11),
+                legend=dict(orientation="h", y=1.05, bgcolor="rgba(0,0,0,0)"),
+                margin=dict(l=10, r=10, t=40, b=10), height=380,
+                yaxis=dict(title="Kapanış", titlefont=dict(color="#22c55e"),
+                           tickfont=dict(color="#22c55e"), showgrid=True, gridcolor="#1e2235"),
+                yaxis2=dict(title=rm_label, titlefont=dict(color="#7dd3fc"),
+                            tickfont=dict(color="#7dd3fc"), overlaying="y", side="right", showgrid=False),
+                xaxis=dict(showgrid=False, color="#94a3b8"),
+            )
+
+            # Legend açıklaması
+            for rejim_ad, renk in [("🟢 Likit","#22c55e"),("🟡 Normal","#f59e0b"),("🔴 İlikit","#ef4444")]:
+                rejim_fig.add_annotation(
+                    text=rejim_ad, xref="paper", yref="paper",
+                    x=0.01 + list(renk_rejim.keys()).index(rejim_ad.split(" ")[1]) * 0.12,
+                    y=-0.08, showarrow=False,
+                    font=dict(color=renk, size=11, family="IBM Plex Mono"),
+                )
+
+            st.plotly_chart(rejim_fig, use_container_width=True, config={"scrollZoom": True, "displayModeBar": True})
+
+            # ── Rejim İstatistikleri ──────────────────────────────────────────
+            st.markdown("**Rejim Bazlı Fiyat Performansı**")
+            rej_stats = []
+            gunluk_degisim = metrics["Günlük Değ. (%)"].reindex(regime_series.index)
+            for r_ad in ["Likit", "Normal", "İlikit"]:
+                mask_r = rejim_ser == r_ad
+                gun_sayisi = mask_r.sum()
+                if gun_sayisi == 0:
+                    continue
+                degisimler = gunluk_degisim[mask_r].dropna()
+                rej_stats.append({
+                    "Rejim": r_ad,
+                    "Gün Sayısı": int(gun_sayisi),
+                    "Ort. Günlük Değ. (%)": round(degisimler.mean(), 3),
+                    "Std. Sapma (%)": round(degisimler.std(), 3),
+                    "Pozitif Gün (%)": round((degisimler > 0).mean() * 100, 1),
+                    "Maks. Getiri (%)": round(degisimler.max(), 2),
+                    "Min. Getiri (%)": round(degisimler.min(), 2),
+                })
+
+            rej_df = pd.DataFrame(rej_stats)
+            renk_map_r = {"Likit": "#22c55e", "Normal": "#f59e0b", "İlikit": "#ef4444"}
+            rej_header = "<tr>" + "".join(f"<th>{c}</th>" for c in rej_df.columns) + "</tr>"
+            rej_rows = ""
+            for _, row in rej_df.iterrows():
+                r_renk = renk_map_r.get(row["Rejim"], "#94a3b8")
+                cells = f"<td><span style='color:{r_renk};font-weight:600'>{row['Rejim']}</span></td>"
+                cells += f"<td><span style='color:#94a3b8'>{int(row['Gün Sayısı'])}</span></td>"
+                ort = row["Ort. Günlük Değ. (%)"]
+                ort_renk = "#22c55e" if ort > 0 else "#ef4444"
+                cells += f"<td><span style='color:{ort_renk}'>{ort:+.3f}%</span></td>"
+                cells += f"<td><span style='color:#94a3b8'>{row['Std. Sapma (%)']:.3f}%</span></td>"
+                cells += f"<td><span style='color:#94a3b8'>{row['Pozitif Gün (%)']:.1f}%</span></td>"
+                cells += f"<td><span style='color:#22c55e'>{row['Maks. Getiri (%)']:+.2f}%</span></td>"
+                cells += f"<td><span style='color:#ef4444'>{row['Min. Getiri (%)']:+.2f}%</span></td>"
+                rej_rows += f"<tr>{cells}</tr>"
+
+            rej_tbl = f"""<style>
+            body{{margin:0;background:#0f1117;}}
+            .rt{{width:100%;border-collapse:collapse;font-size:0.82em;background:#0f1117;}}
+            .rt th{{background:#1e2235;color:#7dd3fc;font-family:'IBM Plex Mono',monospace;font-weight:600;padding:10px 12px;text-align:right;border-bottom:2px solid #2a2d3e;white-space:nowrap;}}
+            .rt th:first-child{{text-align:left;}}
+            .rt td{{padding:8px 12px;text-align:right;border-bottom:1px solid #1e2235;background:#0f1117;}}
+            .rt td:first-child{{text-align:left;}}
+            .rt tr:hover td{{background:#141824;}}</style>
+            <div style="background:#0f1117;">
+            <table class="rt"><thead><tr>{rej_header}</tr></thead><tbody>{rej_rows}</tbody></table></div>"""
+            st.components.v1.html(rej_tbl, height=160, scrolling=False)
+
+            # ── Lead-Lag Analizi ──────────────────────────────────────────────
+            st.markdown(f"**Lead-Lag Analizi — {rm_label} → Fiyat Değişimi**")
+            st.markdown(
+                "<span style='font-size:0.8em;color:#6b7280'>"
+                "Her lag için: bugünkü likidite boyutu ile X gün sonraki fiyat değişimi arasındaki Spearman korelasyonu. "
+                "Koyu renkli barlar istatistiksel olarak anlamlı (p &lt; 0.05).</span>",
+                unsafe_allow_html=True
+            )
+
+            from scipy.stats import spearmanr as sp_corr
+            lags = [1, 2, 3, 5, 7, 10, 15, 20]
+            lag_corrs = []
+            lag_pvals = []
+            fwd_return = metrics["Günlük Değ. (%)"].reindex(regime_series.index)
+
+            for lag in lags:
+                future_ret = fwd_return.shift(-lag)
+                combined = pd.DataFrame({"liq": regime_series, "ret": future_ret}).dropna()
+                if len(combined) > 20:
+                    r, p = sp_corr(combined["liq"], combined["ret"])
+                    lag_corrs.append(round(r, 4))
+                    lag_pvals.append(round(p, 4))
+                else:
+                    lag_corrs.append(np.nan)
+                    lag_pvals.append(np.nan)
+
+            bar_colors = []
+            for r, p in zip(lag_corrs, lag_pvals):
+                if pd.isna(r): bar_colors.append("#4b5563")
+                elif p < 0.05:
+                    bar_colors.append("#22c55e" if r < 0 else "#ef4444")
+                else:
+                    bar_colors.append("rgba(34,197,94,0.3)" if r < 0 else "rgba(239,68,68,0.3)")
+
+            ll_fig = go.Figure()
+            ll_fig.add_bar(
+                x=[f"+{l}g" for l in lags],
+                y=lag_corrs,
+                marker_color=bar_colors,
+                text=[f"{r:.3f}" if not pd.isna(r) else "—" for r in lag_corrs],
+                textposition="outside",
+                textfont=dict(family="IBM Plex Mono", size=10, color="#94a3b8"),
+                hovertemplate="Lag: %{x}<br>Korelasyon: %{y:.4f}<br>p=%{customdata:.4f}<extra></extra>",
+                customdata=lag_pvals,
+            )
+            ll_fig.add_hline(y=0, line=dict(color="#4b5563", width=1))
+            ll_fig.update_layout(
+                paper_bgcolor="#0f1117", plot_bgcolor="#0f1117",
+                font=dict(family="IBM Plex Mono", color="#94a3b8", size=11),
+                margin=dict(l=10, r=10, t=30, b=40), height=320,
+                xaxis=dict(title="Gecikme (gün)", showgrid=False, color="#94a3b8"),
+                yaxis=dict(title="Spearman r", showgrid=True, gridcolor="#1e2235",
+                           zeroline=False, range=[-1, 1]),
+            )
+            ll_fig.add_annotation(
+                text="🟢/🔴 koyu = p<0.05 (anlamlı) · soluk = p≥0.05 (anlamsız)",
+                xref="paper", yref="paper", x=0.5, y=-0.18,
+                showarrow=False, font=dict(size=10, color="#6b7280", family="IBM Plex Mono"),
+            )
+            st.plotly_chart(ll_fig, use_container_width=True)
+
+            # Özet yorum
+            anlamli = [(lags[i], lag_corrs[i]) for i in range(len(lags))
+                       if not pd.isna(lag_corrs[i]) and lag_pvals[i] < 0.05]
+            if anlamli:
+                en_guclu = max(anlamli, key=lambda x: abs(x[1]))
+                yon = "negatif" if en_guclu[1] < 0 else "pozitif"
+                yorum = (f"En güçlü anlamlı sinyal **+{en_guclu[0]} günlük** gecikmede "
+                         f"(r = {en_guclu[1]:.3f}, {yon} korelasyon). ")
+                if en_guclu[1] < 0 and rm != "Hacim":
+                    yorum += f"Yüksek {rm_label} bugün → gelecekte **düşük getiri** eğilimi."
+                elif en_guclu[1] > 0 and rm != "Hacim":
+                    yorum += f"Yüksek {rm_label} bugün → gelecekte **yüksek getiri** eğilimi (dikkatli yorumla)."
+                elif rm == "Hacim":
+                    yorum += "Yüksek hacim bugün → " + ("gelecekte pozitif getiri eğilimi." if en_guclu[1] > 0 else "gelecekte negatif getiri eğilimi.")
+                st.markdown(yorum)
+            else:
+                st.markdown(f"Seçilen boyut ({rm_label}) için istatistiksel olarak anlamlı lead-lag ilişkisi bulunamadı.")
+
+            st.markdown("---")
             excel_df = metrics.iloc[::-1].copy()
             excel_df.index.name = "Date"
             excel_df = excel_df.reset_index()
