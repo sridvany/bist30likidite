@@ -371,7 +371,7 @@ with st.sidebar:
         st.markdown("**🏆 En İyi Hisseyi Bul**")
         tarama_baslangic = st.date_input(
             "Başlangıç Tarihi",
-            value=date.today() - pd.Timedelta(days=20),
+            value=date(2025, 1, 1),
             min_value=date(2000, 1, 1),
             max_value=date.today() - pd.Timedelta(days=1),
         )
