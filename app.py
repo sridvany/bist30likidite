@@ -468,14 +468,7 @@ Haftalık getiri varyansının günlük getiri varyansına oranı (90 günlük r
         st.markdown("""
 **Skor Hesabı:**
 
-Her hisse için iki metrik hesaplanır:
-- **Getiri Rank:** N günlük fiyat değişiminin 30 hisse arasındaki sırası (0→1)
-- **Hacim Rank:** N günlük ortalama işlem hacminin 30 hisse arasındaki sırası (0→1)
-
-`Skor = 0.5 × Getiri Rank + 0.5 × Hacim Rank`
-
-Sadece en yüksek getiriyi değil, **gerçek hacimle desteklenen** hareketi ödüllendirir.
-Düşük hacimli ani fiyat hareketleri otomatik olarak dezavantajlı konuma düşer.
+Seçilen başlangıç tarihinden bugüne BIST30 hisselerinin fiyat getirisi hesaplanır. En yüksek getirili hisse seçilir.
         """)
 
     st.markdown("---")
