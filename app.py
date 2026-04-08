@@ -21,7 +21,7 @@ BIST30 = [
 
 # ── Sayfa Ayarları ──────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Likidite Analizi",
+    page_title="BIST30 Likidite Analizi",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -358,7 +358,7 @@ def color_val(val, col):
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 📊 Likidite Analizi")
+    st.markdown("## 📊 BIST30 Likidite Analizi")
     st.markdown("---")
 
     analiz_modu = st.radio(
@@ -492,7 +492,7 @@ Düşük hacimli ani fiyat hareketleri otomatik olarak dezavantajlı konuma dü�
         )
 
 # ── Ana Alan ─────────────────────────────────────────────────────────────────
-st.markdown("# 📈 Likidite Analizi")
+st.markdown("# 📈 BIST30 Likidite Analizi")
 
 if run or "last_ticker" in st.session_state:
     if run:
@@ -531,7 +531,7 @@ if run or "last_ticker" in st.session_state:
             h_rank_pct   = sonuc["hacim_rank"] * 100
 
             # Açıklayıcı metin
-            _baslangic_str = pd.Timestamp(str(_n_gun_tarama)).strftime("%d.%m.%Y")
+            _baslangic_str = pd.Timestamp(_n_gun_tarama).strftime("%d.%m.%Y") if hasattr(_n_gun_tarama, 'year') else str(_n_gun_tarama)
             getiri_aciklama = (
                 f"BIST30 içinde getiri sıralamasında **%{g_rank_pct:.0f}. persentilde**"
                 f" yer aldı — {_baslangic_str} tarihinden bu yana **+%{getiri_pct:.2f}** kazandırdı."
